@@ -108,13 +108,16 @@ public class PostgresBackendImpl implements KVStore {
       batchQueries.addAll(vssDeleteRecords.stream()
           .map(vssRecord -> buildDeleteObjectQuery(dsl, vssRecord)).toList());
 
-      int[] batchResult = dsl.batch(batchQueries).execute();
-
-      for (int numOfRowsUpdated : batchResult) {
-        if (numOfRowsUpdated == 0) {
-          throw new ConflictException(
-              "Transaction could not be completed due to a possible conflict");
-        }
+      try {
+          int[] batchResult = dsl.batch(batchQueries).execute();
+          for (int numOfRowsUpdated : batchResult) {
+            if (numOfRowsUpdated == 0) {
+              throw new ConflictException(
+                  "Transaction could not be completed due to a possible conflict");
+            }
+          }
+      } catch (org.jooq.exception.DataAccessException e) {
+          throw new ConflictException("Transaction could not be completed due to a possible conflict" + e + " | " + e.getCause());
       }
     });
 
